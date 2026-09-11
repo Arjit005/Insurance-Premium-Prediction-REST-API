@@ -1,4 +1,4 @@
-# 🛡️ Insurance Premium Prediction System
+# 🛡️Insurance Premium Prediction REST API
 
 An end-to-end Machine Learning web application that predicts an applicant's **Insurance Premium Category** (`Low`, `Medium`, or `High`) based on their health indicators, lifestyle habits, and demographic details.
 
