@@ -7,4 +7,22 @@ wheels/
 *.egg-info
 
 # Virtual environments
-.venv
+.venv/
+env/
+venv/
+
+# Environment variables and secrets
+.env
+.env.*
+*.env
+
+# IDE / Editor configuration
+.vscode/
+.idea/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
