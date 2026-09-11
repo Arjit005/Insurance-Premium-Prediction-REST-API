@@ -117,6 +117,6 @@ class UserInput(BaseModel):
         if self.city in tier_1_cities:
             return 1
         if self.city in tier_2_cities:
-            return 3
+            return 2
         else:
             return 3
