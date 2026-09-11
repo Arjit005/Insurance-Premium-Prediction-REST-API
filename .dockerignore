@@ -1,0 +1,28 @@
+# Python generated files
+__pycache__/
+*.py[cod]
+build/
+dist/
+wheels/
+*.egg-info/
+
+# Virtual environment (biggest source of image bloat)
+.venv/
+
+# Version control
+.git/
+.gitignore
+
+# Local env / secrets
+.env
+.env.*
+
+# Docs / local tooling
+README.md
+uv.lock
+pyproject.toml
+.python-version
+
+# OS junk
+.DS_Store
+Thumbs.db

@@ -1,0 +1,24 @@
+[project]
+name = "ml-model-fastapi"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Arjit Katiyar", email = "katiyarkarn295@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.141.1",
+    "pandas>=3.0.5",
+    "requests>=2.34.2",
+    "scikit-learn==1.6.1",
+    "streamlit>=1.63.0",
+    "uvicorn>=0.52.4",
+]
+
+[project.scripts]
+ml-model-fastapi = "ml_model_fastapi:main"
+
+[build-system]
+requires = ["uv_build>=0.12.12,<0.13.0"]
+build-backend = "uv_build"
