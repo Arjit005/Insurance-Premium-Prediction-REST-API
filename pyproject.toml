@@ -1,18 +1,30 @@
 [project]
 name = "ml-model-fastapi"
 version = "0.1.0"
-description = "Add your description here"
+description = "Insurance Premium Prediction REST API with Machine Learning"
 readme = "README.md"
 authors = [
     { name = "Arjit Katiyar", email = "katiyarkarn295@gmail.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.141.1",
-    "pandas>=3.0.5",
-    "requests>=2.34.2",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "pydantic>=2.10.0",
+    "pandas>=2.2.0",
     "scikit-learn==1.6.1",
-    "streamlit>=1.63.0",
-    "uvicorn>=0.52.4",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "httpx>=0.28.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = [".venv", "venv", ".git", "build", "dist"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning",
+]

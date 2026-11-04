@@ -1,172 +1,112 @@
+import logging
+import time
+import uuid
+from typing import Any, Dict
 
-#=====================================================================================
-# taking important imports
-from fastapi import FastAPI,Path,HTTPException,Query
-# from typing import Literal,Annotated,Optional
-# from pydantic import BaseModel,computed_field,Field,field_validator
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pathlib import Path as FilePath
-import shutil
-# import pickle
-# import pandas as pd
 
-from schema.user_input import UserInput
-from ML_model.predict import predict_output
+from ML_model.predict import MODEL_VERSION, predict_output
 from schema.prediction_response import PredictionResponse
+from schema.user_input import UserInput
 
-#======================================================================================
+# Configure structured logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("insurance_api")
 
-# with open('ML_model/model.pkl','rb') as f:# reading data from binaryformat
-#     # load model
-#     model=pickle.load(f)
+app = FastAPI(
+    title="Insurance Premium Prediction REST API",
+    description="Machine Learning REST API predicting applicant insurance premium risk categories with confidence metrics.",
+    version=MODEL_VERSION,
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 
-
-
-# data====================================================
-# tier_1_cities = [
-#     "Mumbai",
-#     "Delhi",
-#     "Bangalore",
-#     "Chennai",
-#     "Kolkata",
-#     "Hyderabad",
-#     "Pune"
-# ]
-
-# tier_2_cities = [
-#     "Jaipur",
-#     "Chandigarh",
-#     "Indore",
-#     "Lucknow",
-#     "Patna",
-#     "Ranchi",
-#     "Visakhapatnam",
-#     "Coimbatore",
-#     "Bhopal",
-#     "Nagpur",
-#     "Vadodara",
-#     "Surat",
-#     "Rajkot",
-#     "Jodhpur",
-#     "Raipur",
-#     "Amritsar",
-#     "Varanasi",
-#     "Agra",
-#     "Dehradun",
-#     "Mysore",
-#     "Jabalpur",
-#     "Guwahati",
-#     "Thiruvananthapuram",
-#     "Ludhiana",
-#     "Allahabad",
-#     "Udaipur",
-#     "Aurangabad",
-#     "Hubli",
-#     "Belgaum",
-#     "Salem",
-#     "Vijayawada",
-#     "Tiruchirappalli",
-#     "Bhavnagar",
-#     "Gwalior",
-#     "Dhanbad",
-#     "Bareilly",
-#     "Aligarh",
-#     "Gaya",
-#     "Kozhikode",
-#     "Warangal",
-#     "Kolhapur",
-#     "Bilaspur",
-#     "Jalandhar",
-#     "Noida",
-#     "Guntur",
-#     "Asansol",
-#     "Siliguri"
-# ]
-#==========================================================
-app = FastAPI(title="Ml model with fast api ")
-
-#pydantic model to validate data
-# class UserInput(BaseModel):
-#     age:Annotated[int,Field(...,gt=0,lt=120,description='Age of User')]
-#     weight:Annotated[float,Field(...,gt=0,description=' weight of User')]
-#     height:Annotated[float,Field(...,gt=0,lt=2.5,description=' height  of User')]
-#     income_lpa:Annotated[float,Field(...,gt=0,description=' Income of User in LPA')]
-#     smoker:Annotated[bool,Field(...,description='User is smoker or not')]
-#     city:Annotated[str,Field(...,description=' City of User')]
-#     occupation: Annotated[
-#         Literal['retired', 'freelancer', 'student', 'government_job', 'business_owner', 'unemployed', 'private_job'],
-#         Field(..., description='Occupation of User')
-#     ]
-
-#     @field_validator('city')
-#     @classmethod
-#     def normalize_city(cla,v:str)->str:
-#         v=v.strip().title()# converting city name in title case and removing extra space
-#         return v
-
-#     # we want to create new feature also using existing features
-#     @computed_field
-#     @property
-#     def bmi(self)->float:#function name should be same as name of field or feature
-#         return self.weight/(self.height**2)
-
-#     @computed_field
-#     @property
-#     def lifestyle_risk(self)->str:
-#         if self.smoker and self.bmi>30:
-#             return "high"
-#         elif self.smoker or self.bmi>27:
-#             return "medium"
-#         else:
-#             return "low"
-        
-#     @computed_field
-#     @property
-#     def age_group(self)->str:
-#         if self.age<25:
-#             return "young"
-#         elif self.age<45:
-#             return "adult"
-#         elif self.age<60:
-#             return "middle_aged"
-#         return "senior"
-    
-#     @computed_field
-#     @property
-#     def city_tier(self)->str:
-#         if self.city in tier_1_cities:
-#             return 1
-#         if self.city in tier_2_cities:
-#             return 3
-#         else:
-#             return 3
+# Enable CORS for frontend flexibility
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-@app.api_route('/', methods=['GET', 'HEAD'])
-def home():
-    return {'message': "Insurance Premium prediction API"}
+@app.middleware("http")
+async def add_observability_middleware(request: Request, call_next):
+    """Observability middleware to track latency, generate request IDs, and log transactions."""
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    request.state.request_id = request_id
+    start_time = time.perf_counter()
 
-@app.api_route('/health', methods=['GET', 'HEAD'])  # reason --> machine readable
+    response: Response = await call_next(request)
+
+    process_time_ms = round((time.perf_counter() - start_time) * 1000, 2)
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Process-Time-Ms"] = str(process_time_ms)
+
+    logger.info(
+        f"request_id={request_id} method={request.method} path={request.url.path} "
+        f"status={response.status_code} latency_ms={process_time_ms}"
+    )
+    return response
+
+
+@app.api_route("/", methods=["GET", "HEAD"])
+def root():
+    return {
+        "service": "Insurance Premium Prediction API",
+        "status": "healthy",
+        "model_version": MODEL_VERSION,
+        "docs": "/docs",
+    }
+
+
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {
-        'status': 'ok'
+        "status": "ok",
+        "model_version": MODEL_VERSION,
     }
-@app.post('/predict', response_model=PredictionResponse)
-def predict_premium(data: UserInput):
 
-    user_input = {
-        'bmi': data.bmi,
-        'age_group': data.age_group,
-        'lifestyle_risk': data.lifestyle_risk,
-        'city_tier': data.city_tier,
-        'income_lpa': data.income_lpa,
-        'occupation': data.occupation
+
+@app.post(
+    "/predict",
+    response_model=PredictionResponse,
+    status_code=200,
+    summary="Predict Insurance Premium Category",
+    description="Validates applicant details, performs automatic feature engineering, and returns risk category with confidence scores.",
+)
+def predict_premium(data: UserInput, request: Request):
+    user_features: Dict[str, Any] = {
+        "bmi": data.bmi,
+        "age_group": data.age_group,
+        "lifestyle_risk": data.lifestyle_risk,
+        "city_tier": data.city_tier,
+        "income_lpa": data.income_lpa,
+        "occupation": data.occupation,
     }
+
+    req_id = getattr(request.state, "request_id", "unknown")
+
     try:
-        prediction = predict_output(user_input)
-
-        return JSONResponse(status_code=200, content=prediction)
+        prediction = predict_output(user_features)
+        logger.info(
+            f"request_id={req_id} inference_success=true "
+            f"category={prediction['predicted_category']} confidence={prediction['confidence']}"
+        )
+        return prediction
     except Exception as e:
-        return JSONResponse(status_code=500, content=str(e))
-
-
+        logger.error(
+            f"request_id={req_id} inference_error={str(e)}",
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Inference execution failed. Please verify input parameters or contact support.",
+        )
