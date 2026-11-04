@@ -142,14 +142,14 @@ app = FastAPI(title="Ml model with fast api ")
 #             return 3
 
 
-@app.get('/')
+@app.api_route('/', methods=['GET', 'HEAD'])
 def home():
-    return{'message':"Insurance Premium prediction API"}
+    return {'message': "Insurance Premium prediction API"}
 
-@app.get('/health')# reason --> machine readable 
+@app.api_route('/health', methods=['GET', 'HEAD'])  # reason --> machine readable
 def health_check():
     return {
-        'status':'ok'
+        'status': 'ok'
     }
 @app.post('/predict', response_model=PredictionResponse)
 def predict_premium(data: UserInput):
